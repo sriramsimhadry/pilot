@@ -1,0 +1,190 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 8px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.panelTitle {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logCount {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  min-width: 20px;
+  text-align: right;
+}
+
+.scrollBtn {
+  width: 22px;
+  height: 22px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.scrollBtn.active {
+  border-color: var(--border-accent);
+  color: var(--accent-bright);
+  background: var(--accent-glow);
+}
+
+/* Filters */
+.filters {
+  display: flex;
+  gap: 4px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.filters::-webkit-scrollbar { height: 2px; }
+
+.filterChip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  letter-spacing: 0.04em;
+}
+
+.filterChip:hover {
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+
+.filterActive {
+  border-color: var(--chip-color, var(--border-accent)) !important;
+  color: var(--chip-color, var(--accent-bright)) !important;
+  background: color-mix(in srgb, var(--chip-color, var(--accent)) 10%, transparent) !important;
+}
+
+/* Log stream */
+.logStream {
+  flex: 1;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 4px 0;
+}
+
+.logEntry {
+  display: grid;
+  grid-template-columns: 62px 80px 1fr;
+  gap: 6px;
+  padding: 4px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.02);
+  transition: background 0.1s;
+  animation: fade-in 0.2s ease;
+}
+
+.logEntry:hover {
+  background: var(--bg-card);
+}
+
+.logTime {
+  color: var(--text-muted);
+  font-size: 9px;
+  padding-top: 1px;
+  letter-spacing: 0.03em;
+}
+
+.logAgent {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.logMessage {
+  font-size: 11px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+/* Level-based border */
+.error { border-left: 2px solid rgba(239, 68, 68, 0.4); }
+.warning { border-left: 2px solid rgba(251, 191, 36, 0.3); }
+.success { border-left: 2px solid rgba(34, 197, 94, 0.3); }
+.info { border-left: 2px solid transparent; }
+
+/* Empty state */
+.emptyLogs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 100%;
+  min-height: 200px;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-align: center;
+  padding: 20px;
+}
+
+.emptyIcon {
+  font-size: 24px;
+  opacity: 0.3;
+}
+
+/* Legend */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.legendLabel { color: var(--text-muted); }

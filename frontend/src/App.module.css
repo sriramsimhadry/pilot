@@ -1,0 +1,41 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg-deep);
+}
+
+.main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 380px 1fr 320px;
+  gap: 1px;
+  overflow: hidden;
+  background: var(--border);
+}
+
+.panel {
+  background: var(--bg-panel);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.browserSection {
+  background: #050a12;
+}
+
+/* Mobile: show only active panel */
+@media (max-width: 1024px) {
+  .main {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+  }
+  .panel {
+    display: none;
+  }
+  .panel.active {
+    display: flex;
+  }
+}
