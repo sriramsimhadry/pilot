@@ -31,3 +31,10 @@ test-results/
 
 # Logs
 *.log
+
+# Database
+backend/aeroo.db
+
+# Test scripts
+test_rapid.py
+{backend/

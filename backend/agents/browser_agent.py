@@ -609,6 +609,53 @@ class BrowserAgent:
         
         return False
 
+    async def click_flight_by_details(self, flight: dict) -> bool:
+        """Find and click a flight matching the given details (airline & departure time)."""
+        await self._log("info", f"Looking for {flight.get('airline')} departing at {flight.get('departure_time')}")
+        
+        target_airline = (flight.get("airline") or "").lower()
+        target_dep = (flight.get("departure_time") or "").lower()
+        
+        for selector in self.SELECTORS["flight_result"]:
+            try:
+                elements = await self.page.query_selector_all(selector)
+                for i, el in enumerate(elements):
+                    text = (await el.inner_text() or "").lower()
+                    if not text.strip():
+                        continue
+                    
+                    airline_match = not target_airline or any(word in text for word in target_airline.split() if len(word) > 2)
+                    
+                    dep_match = False
+                    if target_dep:
+                        if target_dep in text or target_dep.replace(":", "") in text:
+                            dep_match = True
+                        elif target_dep.startswith("0") and target_dep[1:] in text:
+                            dep_match = True
+                    else:
+                        dep_match = True
+                    
+                    if airline_match and dep_match:
+                        await self._log("success", f"Matched flight card {i + 1}")
+                        await el.scroll_into_view_if_needed()
+                        await asyncio.sleep(0.5)
+                        
+                        btn = await el.query_selector("button")
+                        if btn:
+                            await btn.click()
+                        else:
+                            await el.click()
+                            
+                        await self._human_delay(1.5, 2.5)
+                        await self._take_screenshot()
+                        return True
+            except Exception:
+                continue
+        
+        idx = flight.get("index", 0)
+        await self._log("warning", f"Could not precisely match flight text. Falling back to index {idx + 1}")
+        return await self.click_flight_at_index(idx)
+
     async def fill_passenger_form(self, passenger: dict):
         """Fill passenger details form"""
         await self._log("info", f"Filling passenger details for {passenger.get('first_name', '')} {passenger.get('last_name', '')}")

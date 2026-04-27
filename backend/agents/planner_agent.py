@@ -114,17 +114,26 @@ class PlannerAgent:
         
         # Extract class
         travel_class = self._extract_class(query_lower)
+        # Extract round trip info (basic regex fallback)
+        is_round_trip = False
+        return_date = None
+        if any(w in query_lower for w in ["return", "round trip", "roundtrip", "come back"]):
+            is_round_trip = True
+            # very naive fallback for return date
+            return_date = self._extract_date(query_lower.split("return")[-1] if "return" in query_lower else query_lower)
         
         plan = {
             "parsed": {
                 "origin": origin,
                 "destination": destination,
                 "date": travel_date,
+                "is_round_trip": is_round_trip,
+                "return_date": return_date,
                 "passengers": passengers,
                 "class": travel_class,
                 "raw_query": query,
             },
-            "steps": self._build_steps(origin, destination, travel_date, passengers, travel_class),
+            "steps": self._build_steps(origin, destination, travel_date, passengers, travel_class, is_round_trip, return_date),
             "valid": bool(origin and destination),
         }
         
@@ -141,17 +150,21 @@ class PlannerAgent:
         system_prompt = """You are a flight search parser. Extract flight details from the user query.
 Return ONLY valid JSON, no explanation. Format:
 {
-  "origin_city": "city name exactly as spelled in India",
-  "destination_city": "city name exactly as spelled in India",
+  "origin_city": "city name",
+  "origin_code": "3-letter IATA code (e.g. MAA, LHR)",
+  "destination_city": "city name",
+  "destination_code": "3-letter IATA code (e.g. DEL, CDG)",
   "date_offset_days": 0,
   "date_explicit": "DD/MM/YYYY or null",
+  "is_round_trip": false,
+  "return_date_explicit": "DD/MM/YYYY or null",
   "passengers": 1,
   "class": "Economy"
 }
 date_offset_days: 0=today, 1=tomorrow, 2=day after. Use date_explicit for specific dates."""
 
         response = self.groq_client.chat.completions.create(
-            model="llama3-8b-8192",   # Free on Groq
+            model="llama-3.3-70b-versatile",   # Free on Groq
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": query},
@@ -165,20 +178,36 @@ date_offset_days: 0=today, 1=tomorrow, 2=day after. Use date_explicit for specif
 
         parsed_llm = json.loads(raw)
 
-        # Map LLM output to our CITIES dict
+        # Map LLM output to our CITIES dict or use codes directly
         origin_str = parsed_llm.get("origin_city", "").lower()
         dest_str = parsed_llm.get("destination_city", "").lower()
+        
         origin = CITIES.get(origin_str)
         destination = CITIES.get(dest_str)
+        
+        # Use LLM-provided codes as high-priority fallback
+        if not origin and parsed_llm.get("origin_code"):
+            origin = {
+                "code": parsed_llm["origin_code"].upper(),
+                "name": parsed_llm.get("origin_city", "Unknown"),
+                "display": parsed_llm.get("origin_city", "Unknown")
+            }
+        
+        if not destination and parsed_llm.get("destination_code"):
+            destination = {
+                "code": parsed_llm["destination_code"].upper(),
+                "name": parsed_llm.get("destination_city", "Unknown"),
+                "display": parsed_llm.get("destination_city", "Unknown")
+            }
 
-        # fuzzy match if exact key missing
+        # Fuzzy match against local CITIES if still missing
         if not origin:
             for k, v in CITIES.items():
-                if origin_str in k or k in origin_str:
+                if origin_str and (origin_str in k or k in origin_str):
                     origin = v; break
         if not destination:
             for k, v in CITIES.items():
-                if dest_str in k or k in dest_str:
+                if dest_str and (dest_str in k or k in dest_str):
                     destination = v; break
 
         # Resolve date
@@ -191,17 +220,21 @@ date_offset_days: 0=today, 1=tomorrow, 2=day after. Use date_explicit for specif
 
         passengers = int(parsed_llm.get("passengers", 1))
         travel_class = parsed_llm.get("class", "Economy")
+        is_round_trip = bool(parsed_llm.get("is_round_trip", False))
+        return_date = parsed_llm.get("return_date_explicit") if is_round_trip else None
 
         plan = {
             "parsed": {
                 "origin": origin,
                 "destination": destination,
                 "date": travel_date,
+                "is_round_trip": is_round_trip,
+                "return_date": return_date,
                 "passengers": passengers,
                 "class": travel_class,
                 "raw_query": query,
             },
-            "steps": self._build_steps(origin, destination, travel_date, passengers, travel_class),
+            "steps": self._build_steps(origin, destination, travel_date, passengers, travel_class, is_round_trip, return_date),
             "valid": bool(origin and destination),
         }
         if not plan["valid"]:
@@ -322,7 +355,7 @@ date_offset_days: 0=today, 1=tomorrow, 2=day after. Use date_explicit for specif
             return "Premium Economy"
         return "Economy"
 
-    def _build_steps(self, origin, destination, date, passengers, travel_class) -> list:
+    def _build_steps(self, origin, destination, date, passengers, travel_class, is_round_trip=False, return_date=None) -> list:
         """Build execution steps for the workflow"""
         steps = [
             {
@@ -342,10 +375,10 @@ date_offset_days: 0=today, 1=tomorrow, 2=day after. Use date_explicit for specif
             },
             {
                 "id": 3,
-                "name": "select_one_way",
-                "description": "Select one-way trip option",
+                "name": "select_trip_type",
+                "description": "Select round-trip option" if is_round_trip else "Select one-way trip option",
                 "agent": "browser",
-                "action": "click_one_way",
+                "action": "click_round_trip" if is_round_trip else "click_one_way",
             },
             {
                 "id": 4,
@@ -370,7 +403,20 @@ date_offset_days: 0=today, 1=tomorrow, 2=day after. Use date_explicit for specif
                 "agent": "browser",
                 "action": "fill_date",
                 "value": date,
-            },
+            }
+        ]
+        
+        if is_round_trip and return_date:
+            steps.append({
+                "id": 6.5,
+                "name": "select_return_date",
+                "description": f"Select return date: {return_date}",
+                "agent": "browser",
+                "action": "fill_return_date",
+                "value": return_date,
+            })
+            
+        steps.extend([
             {
                 "id": 7,
                 "name": "search_flights",
@@ -420,7 +466,7 @@ date_offset_days: 0=today, 1=tomorrow, 2=day after. Use date_explicit for specif
                 "agent": "orchestrator",
                 "action": "stop_before_payment",
             },
-        ]
+        ])
         return steps
 
     def _build_error(self, origin, destination) -> str:

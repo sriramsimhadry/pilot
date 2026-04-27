@@ -17,9 +17,11 @@ export default function PlanView({ plan }) {
         </div>
         <div className={styles.routeSummary}>
           <span className={styles.city}>{parsed.origin?.display || '?'}</span>
-          <span className={styles.arrow}>→</span>
+          <span className={styles.arrow}>{parsed.is_round_trip ? '⇄' : '→'}</span>
           <span className={styles.city}>{parsed.destination?.display || '?'}</span>
-          <span className={styles.datePill}>{parsed.date}</span>
+          <span className={styles.datePill}>
+            {parsed.date} {parsed.is_round_trip && parsed.return_date ? `- ${parsed.return_date}` : ''}
+          </span>
           <span className={styles.passPill}>{parsed.passengers} pax · {parsed.class}</span>
         </div>
       </div>

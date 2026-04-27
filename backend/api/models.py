@@ -37,6 +37,7 @@ class WorkflowStage(str, Enum):
     NAVIGATING = "navigating"
     SEARCHING = "searching"
     EXTRACTING = "extracting"
+    ANALYZING = "analyzing"
     AWAITING_SELECTION = "awaiting_selection"
     FILLING_FORM = "filling_form"
     STOPPED_BEFORE_PAYMENT = "stopped_before_payment"
@@ -49,6 +50,7 @@ class WorkflowStatus(BaseModel):
     stage: WorkflowStage
     logs: List[dict]
     flights: List[FlightResult]
+    summary: Optional[str] = None
     screenshot_available: bool
     error: Optional[str] = None
 

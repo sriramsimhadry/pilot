@@ -79,6 +79,13 @@ class ConnectionManager:
             "payload": flights,
         })
 
+    async def send_summary(self, workflow_id: str, summary: str):
+        """Send LLM summary to frontend"""
+        await self.send_message(workflow_id, {
+            "type": "summary",
+            "payload": summary,
+        })
+
     async def send_stage_update(
         self, workflow_id: str, stage: str, message: str = ""
     ):

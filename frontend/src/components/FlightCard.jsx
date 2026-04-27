@@ -23,9 +23,39 @@ const AIRLINE_CODES = {
   'GoAir': 'G8',
 }
 
-export default function FlightCard({ flight, isSelected, onSelect, selectable }) {
+/** Parse "₹5,800" → 5800 */
+function parsePrice(priceStr) {
+  if (!priceStr) return null
+  const digits = priceStr.replace(/[^0-9]/g, '')
+  const n = parseInt(digits, 10)
+  return isNaN(n) ? null : n
+}
+
+/**
+ * Returns price tier badge data for this flight relative to
+ * the mean price of all flights in the list.
+ */
+function getPriceTier(flight, allFlights) {
+  if (!allFlights || allFlights.length < 3) return null
+
+  const prices = allFlights.map((f) => parsePrice(f.price)).filter(Boolean)
+  if (!prices.length) return null
+
+  const mean = prices.reduce((a, b) => a + b, 0) / prices.length
+  const myPrice = parsePrice(flight.price)
+  if (!myPrice) return null
+
+  const ratio = myPrice / mean
+
+  if (ratio <= 0.87) return { label: 'Great Deal', cls: 'dealGreen',  icon: '🟢' }
+  if (ratio <= 1.13) return { label: 'Fair Price',  cls: 'dealAmber',  icon: '🟡' }
+  return               { label: 'Pricey',        cls: 'dealRed',    icon: '🔴' }
+}
+
+export default function FlightCard({ flight, isSelected, onSelect, selectable, allFlights }) {
   const accentColor = AIRLINE_COLORS[flight.airline] || '#38bdf8'
-  const code = AIRLINE_CODES[flight.airline] || flight.airline?.slice(0, 2).toUpperCase() || '??'
+  const code        = AIRLINE_CODES[flight.airline] || flight.airline?.slice(0, 2).toUpperCase() || '??'
+  const priceTier   = getPriceTier(flight, allFlights)
 
   return (
     <div
@@ -44,8 +74,16 @@ export default function FlightCard({ flight, isSelected, onSelect, selectable })
             <span className={styles.flightNum}>{flight.flight_number}</span>
           )}
         </div>
-        <div className={styles.stopsBadge} data-stops={flight.stops?.toLowerCase()}>
-          {flight.stops || 'Non-stop'}
+        <div className={styles.stripRight}>
+          <div className={styles.stopsBadge} data-stops={flight.stops?.toLowerCase()}>
+            {flight.stops || 'Non-stop'}
+          </div>
+          {/* Price tier badge */}
+          {priceTier && (
+            <div className={`${styles.priceTierBadge} ${styles[priceTier.cls]}`}>
+              {priceTier.icon} {priceTier.label}
+            </div>
+          )}
         </div>
       </div>
 

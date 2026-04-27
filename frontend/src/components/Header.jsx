@@ -4,7 +4,7 @@ import styles from './Header.module.css'
 
 const PANELS = [
   { id: 'chat', label: 'Mission Control', icon: '◈' },
-  { id: 'browser', label: 'Live Browser', icon: '◉' },
+  { id: 'history', label: 'Past Searches', icon: '🕒' },
   { id: 'logs', label: 'Agent Logs', icon: '◎' },
 ]
 
@@ -15,6 +15,7 @@ const STAGE_LABELS = {
   navigating: { label: 'NAVIGATING', color: 'accent' },
   searching: { label: 'SEARCHING', color: 'accent' },
   extracting: { label: 'EXTRACTING', color: 'amber' },
+  analyzing: { label: 'AI ANALYSING', color: 'accent' },
   awaiting_selection: { label: 'AWAITING INPUT', color: 'amber' },
   filling_form: { label: 'FILLING FORM', color: 'accent' },
   stopped_before_payment: { label: 'MISSION COMPLETE', color: 'green' },

@@ -7,6 +7,7 @@ const AGENT_CONFIG = {
   planner: { color: '#38bdf8', icon: '◎' },
   browser: { color: '#0ea5e9', icon: '◉' },
   extraction: { color: '#f59e0b', icon: '◆' },
+  analysis: { color: '#a78bfa', icon: '✦' },
   form_filling: { color: '#22c55e', icon: '◇' },
   vision: { color: '#f97316', icon: '◐' },
   system: { color: '#64748b', icon: '○' },

@@ -6,9 +6,13 @@ Multi-agent system for automated flight search on MakeMyTrip
 import asyncio
 import json
 import uuid
+import os
 from datetime import datetime
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from dotenv import load_dotenv
+load_dotenv()
+
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 
 from agents.workflow_orchestrator import WorkflowOrchestrator
@@ -36,6 +40,23 @@ app.add_middleware(
 manager = ConnectionManager()
 active_workflows: dict[str, WorkflowOrchestrator] = {}
 logger = AgentLogger("main")
+
+from api.db import init_db, get_search_history
+
+@app.on_event("startup")
+async def startup_event():
+    await init_db()
+    logger.info("Database initialized.")
+
+@app.get("/api/history")
+async def fetch_history():
+    """Fetch past searches from the database"""
+    try:
+        history = await get_search_history()
+        return {"history": history}
+    except Exception as e:
+        logger.error(f"Error fetching history: {e}")
+        raise HTTPException(status_code=500, detail="Could not fetch history")
 
 
 @app.get("/health")
@@ -65,33 +86,51 @@ async def start_workflow(request: QueryRequest):
     return {"workflow_id": workflow_id, "status": "started"}
 
 
-@app.post("/api/workflow/{workflow_id}/passenger")
-async def submit_passenger(workflow_id: str, passenger: PassengerDetails):
-    """Submit passenger details to an active workflow"""
-    if workflow_id not in active_workflows:
-        raise HTTPException(status_code=404, detail="Workflow not found")
+@app.post("/api/transcribe")
+async def transcribe_audio(audio: UploadFile = File(...)):
+    """
+    Transcribe audio using Groq Whisper large-v3.
+    Accepts any audio format (webm, ogg, mp4, wav, etc.)
+    Returns: { "text": "<transcribed text>" }
+    """
+    groq_key = os.getenv("GROQ_API_KEY", "")
+    if not groq_key:
+        raise HTTPException(status_code=503, detail="GROQ_API_KEY not configured")
 
-    orchestrator = active_workflows[workflow_id]
-    await orchestrator.set_passenger_details(passenger)
-    return {"status": "passenger_details_received"}
+    try:
+        from groq import Groq as GroqClient
+        client = GroqClient(api_key=groq_key)
 
+        audio_bytes = await audio.read()
+        if not audio_bytes:
+            raise HTTPException(status_code=400, detail="Empty audio file received")
 
-@app.post("/api/workflow/{workflow_id}/select-flight")
-async def select_flight(workflow_id: str, flight_index: int):
-    """Select a flight from the extracted results"""
-    if workflow_id not in active_workflows:
-        raise HTTPException(status_code=404, detail="Workflow not found")
+        # Groq accepts the file as a tuple: (filename, bytes, mime_type)
+        filename  = audio.filename or "recording.webm"
+        mime_type = audio.content_type or "audio/webm"
 
-    orchestrator = active_workflows[workflow_id]
-    await orchestrator.select_flight(flight_index)
-    return {"status": "flight_selected"}
+        transcription = client.audio.transcriptions.create(
+            file=(filename, audio_bytes, mime_type),
+            model="whisper-large-v3",
+            response_format="json",
+        )
+
+        text = transcription.text.strip()
+        logger.info(f"Transcription complete: '{text[:60]}{'...' if len(text)>60 else ''}' ")
+        return {"text": text}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Transcription error: {e}")
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
 
 
 @app.post("/api/workflow/{workflow_id}/stop")
 async def stop_workflow(workflow_id: str):
     """Stop an active workflow"""
     if workflow_id not in active_workflows:
-        raise HTTPException(status_code=404, detail="Workflow not found")
+        return {"status": "already_stopped"}
 
     orchestrator = active_workflows[workflow_id]
     await orchestrator.stop()
@@ -131,6 +170,11 @@ async def websocket_endpoint(websocket: WebSocket, workflow_id: str):
             try:
                 if status.get("flights") is not None:
                     await manager.send_flights(workflow_id, status.get("flights"))
+            except Exception:
+                pass
+            try:
+                if status.get("summary") is not None:
+                    await manager.send_summary(workflow_id, status.get("summary"))
             except Exception:
                 pass
             try:

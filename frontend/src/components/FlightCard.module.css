@@ -34,6 +34,16 @@
   border-bottom: 1px solid var(--border);
 }
 
+/* Right side of airline strip — stops badge + price tier */
+.stripRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 .airlineBadge {
   width: 30px;
   height: 30px;
@@ -89,6 +99,34 @@
   background: rgba(251, 191, 36, 0.1);
   color: var(--amber);
   border-color: rgba(251, 191, 36, 0.2);
+}
+
+/* Price tier badge */
+.priceTierBadge {
+  font-size: 8.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.dealGreen {
+  background: rgba(34, 197, 94, 0.1);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.dealAmber {
+  background: rgba(251, 191, 36, 0.1);
+  color: var(--amber);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+.dealRed {
+  background: rgba(239, 68, 68, 0.08);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 /* Times row */

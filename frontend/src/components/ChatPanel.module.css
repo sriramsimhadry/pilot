@@ -1,326 +1,371 @@
-.panel {
+.container {
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 800px;
   height: 100%;
-  overflow: hidden;
+  margin: 0 auto;
+  background: var(--bg-deep);
 }
 
-.panelHeader {
-  padding: 14px 16px 10px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
+.chatArea {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
 }
 
-.panelTitle {
-  display: block;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  color: var(--accent-bright);
-  font-weight: 700;
+.welcomeScreen {
+  margin: auto;
+  text-align: center;
+  color: var(--text-primary);
 }
 
-.panelSub {
-  display: block;
-  font-size: 11px;
+.welcomeScreen h2 {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+}
+
+.welcomeSub {
+  font-size: 0.9rem;
   color: var(--text-muted);
-  margin-top: 2px;
+  margin-bottom: 2rem;
 }
 
-/* Input section */
-.inputSection {
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border);
+.exampleChips {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.chip {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 0.75rem 1.25rem;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+}
+
+.chip:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+
+.messagesList {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding-bottom: 2rem;
+}
+
+.messageRowUser {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.userBubble {
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  padding: 1rem 1.5rem;
+  border-radius: 20px;
+  max-width: 80%;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.messageRowBot {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.botAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
   flex-shrink: 0;
+}
+
+.botContent {
+  flex: 1;
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+}
+
+.statusBubble {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  padding: 0.5rem 0;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.errorBubble {
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.1);
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 107, 107, 0.2);
+}
+
+.responseText {
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+/* ── AI analyzing bubble (spinner shown while Groq is working) ─── */
+.analyzingBubble {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(
+    135deg,
+    rgba(20, 20, 35, 0.9) 0%,
+    rgba(14, 22, 45, 0.95) 100%
+  );
+  border: 1px solid rgba(99, 179, 237, 0.2);
+  border-radius: 16px;
+  padding: 14px 18px;
+  animation: fadeIn 0.3s ease both;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.analyzeSpinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(99, 179, 237, 0.15);
+  border-top-color: rgba(99, 179, 237, 0.9);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+  flex-shrink: 0;
+}
+
+.analyzeTextBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.analyzeTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.analyzeSubtitle {
+  font-size: 0.75rem;
+  color: rgba(148, 163, 184, 0.7);
+}
+
+.flightsContainer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.flightList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+.inputArea {
+  padding: 0.75rem 2rem 1.5rem;
+  background: var(--bg-deep);
+  position: relative;
+}
+
+/* Mic error toast */
+.micErrorToast {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  animation: fadeIn 0.2s ease;
 }
 
 .form {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.inputWrapper {
-  display: flex;
+  gap: 0.5rem;
   align-items: center;
-  gap: 8px;
-  background: var(--bg-card);
+  background: var(--bg-panel);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0 12px;
-  transition: border-color 0.2s;
+  border-radius: 24px;
+  padding: 0.4rem 0.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
-.inputWrapper:focus-within {
-  border-color: var(--border-accent);
-  box-shadow: 0 0 0 2px var(--accent-glow);
-}
-
-.inputPrefix {
-  color: var(--accent);
-  font-family: var(--font-mono);
-  font-size: 16px;
-  flex-shrink: 0;
-  margin-top: -1px;
+.form:focus-within {
+  border-color: var(--accent);
 }
 
 .input {
   flex: 1;
   background: transparent;
   border: none;
-  outline: none;
   color: var(--text-primary);
-  font-family: var(--font-sans);
-  font-size: 13px;
-  padding: 10px 0;
+  padding: 0.65rem 0.75rem;
+  font-size: 1rem;
+  outline: none;
 }
 
 .input::placeholder {
   color: var(--text-muted);
 }
 
-.input:disabled {
-  opacity: 0.5;
-}
-
-.formActions {
-  display: flex;
-  gap: 8px;
-}
-
-.btn {
-  flex: 1;
+/* ── Mic button ─────────────────────────────────────────────────── */
+.micBtn {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s ease;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  overflow: visible;
 }
 
-.btn:disabled {
-  opacity: 0.4;
+.micBtn:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-.btnPrimary {
-  background: var(--accent);
-  color: #000;
-  border-color: var(--accent);
+/* Idle */
+.micBtn_idle:not(:disabled):hover {
+  background: rgba(99, 179, 237, 0.15);
+  color: var(--accent);
+  transform: scale(1.08);
 }
 
-.btnPrimary:hover:not(:disabled) {
-  background: var(--accent-bright);
-  border-color: var(--accent-bright);
-  box-shadow: 0 0 12px rgba(14, 165, 233, 0.4);
+/* Recording — pulsing red */
+.micBtn_recording {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1.5px solid rgba(239, 68, 68, 0.5);
+  color: #f87171;
+  animation: micPulse 1.2s ease-in-out infinite;
 }
 
-.btnDanger {
+@keyframes micPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.35); }
+  50%       { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
+
+/* Processing — spinning blue */
+.micBtn_processing {
+  background: rgba(99, 179, 237, 0.12);
+  color: var(--accent);
+  animation: micSpin 1s linear infinite;
+}
+
+@keyframes micSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error */
+.micBtn_error {
   background: rgba(239, 68, 68, 0.1);
-  color: var(--red);
-  border-color: rgba(239, 68, 68, 0.3);
+  color: #f87171;
 }
 
-.btnDanger:hover {
-  background: rgba(239, 68, 68, 0.2);
+.micIcon {
+  font-size: 1rem;
+  line-height: 1;
+  display: block;
 }
 
-.btnAccent {
-  background: rgba(14, 165, 233, 0.1);
-  color: var(--accent-bright);
-  border-color: var(--border-accent);
-  flex: none;
-  padding: 8px 14px;
-}
-
-.btnAccent:hover {
-  background: var(--accent-glow);
-}
-
-/* Examples */
-.examples {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.examplesLabel {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  color: var(--text-muted);
-  letter-spacing: 0.1em;
-  padding-top: 4px;
-  flex-shrink: 0;
-}
-
-.exampleChips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-}
-
-.chip {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 3px 10px;
-  font-size: 11px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-
-.chip:hover {
-  border-color: var(--border-accent);
-  color: var(--accent-bright);
-  background: var(--accent-glow);
-}
-
-/* Error banner */
-.errorBanner {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: rgba(239, 68, 68, 0.08);
-  border-bottom: 1px solid rgba(239, 68, 68, 0.2);
-  color: var(--text-error);
-  font-size: 12px;
-  flex-shrink: 0;
-}
-
-.errorIcon {
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
-/* Scrollable content */
-.content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-/* Success banner */
-.successBanner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px;
-  background: rgba(34, 197, 94, 0.07);
-  border: 1px solid rgba(34, 197, 94, 0.2);
-  border-radius: var(--radius-lg);
-  animation: fade-in 0.4s ease;
-}
-
-.successIcon {
-  width: 32px;
-  height: 32px;
+/* Ripple ring while recording */
+.micRipple {
+  position: absolute;
+  inset: -6px;
   border-radius: 50%;
-  background: rgba(34, 197, 94, 0.15);
-  color: var(--green);
+  border: 1.5px solid rgba(239, 68, 68, 0.4);
+  animation: ripple 1.5s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes ripple {
+  0%   { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* ── Send button ────────────────────────────────────────────────── */
+.sendBtn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  border: none;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 1.2rem;
+  transition: all 0.2s ease;
   flex-shrink: 0;
 }
 
-.successTitle {
-  font-weight: 600;
-  color: var(--text-success);
-  font-size: 13px;
+.sendBtn:disabled {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  cursor: not-allowed;
 }
 
-.successSub {
-  font-size: 11px;
-  color: var(--text-secondary);
-  margin-top: 2px;
+.sendBtn:not(:disabled):hover {
+  background: #3a7eed;
+  transform: scale(1.05);
 }
 
-/* Flights section */
-.flightsSection {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  animation: fade-in 0.3s ease;
-}
-
-.sectionHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.sectionTitle {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.badge {
-  background: var(--accent-glow);
-  color: var(--accent-bright);
-  border: 1px solid var(--border-accent);
-  border-radius: 10px;
-  padding: 1px 6px;
-  font-size: 9px;
-  font-family: var(--font-mono);
-}
-
-.selectPrompt {
-  font-size: 11px;
-  color: var(--text-warning);
-  animation: blink 1.5s ease-in-out infinite;
-}
-
-.flightList {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-/* Passenger prompt */
-.passengerPrompt {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-accent);
-  border-radius: var(--radius-lg);
-  animation: fade-in 0.3s ease;
-}
-
-.passengerIcon {
-  font-size: 22px;
-  flex-shrink: 0;
-}
-
-.passengerTitle {
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--text-primary);
-}
-
-.passengerSub {
-  font-size: 11px;
-  color: var(--text-secondary);
-  margin-top: 2px;
+.footerNote {
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 0.75rem;
 }
