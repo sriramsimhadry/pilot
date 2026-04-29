@@ -3,7 +3,26 @@ import json
 import os
 from datetime import datetime
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "aeroo.db")
+
+def _resolve_db_path() -> str:
+    """
+    Resolve a writable SQLite path.
+    Vercel serverless filesystem is read-only except /tmp.
+    """
+    env_override = os.getenv("AEROO_DB_PATH")
+    if env_override:
+        return env_override
+
+    if os.getenv("VERCEL") == "1":
+        return "/tmp/aeroo.db"
+
+    backend_root = os.path.dirname(os.path.dirname(__file__))
+    data_dir = os.path.join(backend_root, "data")
+    os.makedirs(data_dir, exist_ok=True)
+    return os.path.join(data_dir, "aeroo.db")
+
+
+DB_PATH = _resolve_db_path()
 
 async def init_db():
     """Initialize the SQLite database and create tables if they don't exist."""
