@@ -12,32 +12,37 @@ const EXAMPLE_QUERIES = [
 ]
 
 // Mic states
-const MIC_IDLE       = 'idle'
-const MIC_RECORDING  = 'recording'
+const MIC_IDLE = 'idle'
+const MIC_RECORDING = 'recording'
 const MIC_PROCESSING = 'processing'
-const MIC_ERROR      = 'error'
+const MIC_ERROR = 'error'
 
 const API_BASE = import.meta.env.VITE_API_BASE || ''
 
 export default function ChatPanel() {
-  const [query, setQuery]               = useState('')
-  const [micState, setMicState]         = useState(MIC_IDLE)
-  const [micError, setMicError]         = useState(null)
+  const [query, setQuery] = useState('')
+  const [micState, setMicState] = useState(MIC_IDLE)
+  const [micError, setMicError] = useState(null)
 
-  const inputRef        = useRef(null)
-  const messagesEndRef  = useRef(null)
+  const inputRef = useRef(null)
+  const messagesEndRef = useRef(null)
   const mediaRecorderRef = useRef(null)
-  const chunksRef        = useRef([])
-  const streamRef        = useRef(null)
+  const chunksRef = useRef([])
+  const streamRef = useRef(null)
 
-  const isRunning     = useStore((s) => s.isRunning)
-  const stage         = useStore((s) => s.stage)
-  const stageMessage  = useStore((s) => s.stageMessage)
-  const chatHistory   = useStore((s) => s.chatHistory)
-  const error         = useStore((s) => s.error)
+  const isRunning = useStore((s) => s.isRunning)
+  const awaitingClarification = useStore((s) => s.awaitingClarification)
+  const sendClarification = useStore((s) => s.sendClarification)
   const startWorkflow = useStore((s) => s.startWorkflow)
+  const stage = useStore((s) => s.stage)
+  const stageMessage = useStore((s) => s.stageMessage)
+  const chatHistory = useStore((s) => s.chatHistory)
+  const error = useStore((s) => s.error)
+  // duplicate removed
 
-  const canSearch   = query.trim().length > 5 && !isRunning
+  const canSearch = awaitingClarification
+    ? query.trim().length > 0
+    : query.trim().length > 5 && !isRunning
   const isAnalyzing = isRunning && stage === 'analyzing'
 
   // Scroll to bottom whenever history changes or loading state changes
@@ -68,7 +73,7 @@ export default function ChatPanel() {
   const sendAudioForTranscription = useCallback(async (chunks, mimeType) => {
     setMicState(MIC_PROCESSING)
     try {
-      const blob     = new Blob(chunks, { type: mimeType })
+      const blob = new Blob(chunks, { type: mimeType })
       const formData = new FormData()
       formData.append('audio', blob, 'recording.webm')
 
@@ -151,7 +156,7 @@ export default function ChatPanel() {
   // ── Toggle mic button ────────────────────────────────────────────
   const handleMicClick = useCallback(() => {
     if (isRunning) return
-    if (micState === MIC_IDLE)      startRecording()
+    if (micState === MIC_IDLE) startRecording()
     else if (micState === MIC_RECORDING) stopRecording()
   }, [micState, isRunning, startRecording, stopRecording])
 
@@ -159,7 +164,11 @@ export default function ChatPanel() {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!canSearch) return
-    startWorkflow(query.trim())
+    if (awaitingClarification) {
+      sendClarification(query.trim())
+    } else {
+      startWorkflow(query.trim())
+    }
     setQuery('')
   }
 
@@ -170,164 +179,195 @@ export default function ChatPanel() {
 
   // ── Mic button visual helpers ────────────────────────────────────
   const micLabel = {
-    [MIC_IDLE]:       '🎤',
-    [MIC_RECORDING]:  '⏹',
+    [MIC_IDLE]: '🎤',
+    [MIC_RECORDING]: '⏹',
     [MIC_PROCESSING]: '⏳',
-    [MIC_ERROR]:      '⚠',
+    [MIC_ERROR]: '⚠',
   }[micState]
 
   const micTitle = {
-    [MIC_IDLE]:       'Click to speak',
-    [MIC_RECORDING]:  'Recording… click to stop',
+    [MIC_IDLE]: 'Click to speak',
+    [MIC_RECORDING]: 'Recording… click to stop',
     [MIC_PROCESSING]: 'Transcribing…',
-    [MIC_ERROR]:      micError || 'Error',
+    [MIC_ERROR]: micError || 'Error',
   }[micState]
 
   return (
-    <div className={styles.container}>
-      <div className={styles.chatArea}>
-        {chatHistory.length === 0 ? (
-          <div className={styles.welcomeScreen}>
-            <h2>Where do you want to fly?</h2>
-            <p className={styles.welcomeSub}>Type your query below or <strong>speak</strong> using the mic 🎤 (Ctrl+M)</p>
-            <div className={styles.exampleChips}>
-              {EXAMPLE_QUERIES.map((q) => (
-                <button key={q} className={styles.chip} onClick={() => handleExample(q)}>
-                  {q}
-                </button>
-              ))}
-            </div>
+  <div className={styles.container}>
+    <div className={styles.chatArea}>
+      {chatHistory.length === 0 ? (
+        <div className={styles.welcomeScreen}>
+          <h2>Where do you want to fly?</h2>
+          <p className={styles.welcomeSub}>Type your query below or <strong>speak</strong> using the mic 🎤 (Ctrl+M)</p>
+          <div className={styles.exampleChips}>
+            {EXAMPLE_QUERIES.map((q) => (
+              <button key={q} className={styles.chip} onClick={() => handleExample(q)}>
+                {q}
+              </button>
+            ))}
           </div>
-        ) : (
-          <div className={styles.messagesList}>
-            {chatHistory.map((entry, idx) => {
-              const isLast = idx === chatHistory.length - 1
-              const showSkeletons = isLast && entry.status === 'searching' && entry.flights.length === 0
+        </div>
+      ) : (
+        <div className={styles.messagesList}>
+          {chatHistory.map((entry, idx) => {
+            const isLast = idx === chatHistory.length - 1
+            const showSkeletons = isLast && entry.status === 'searching' && entry.flights.length === 0
 
-              return (
-                <React.Fragment key={entry.id}>
-                  {/* ── User message ── */}
-                  <div className={styles.messageRowUser}>
-                    <div className={styles.userBubble}>{entry.query}</div>
-                  </div>
+            return (
+              <React.Fragment key={entry.id}>
+                {/* ── User message ── */}
+                <div className={styles.messageRowUser}>
+                  <div className={styles.userBubble}>{entry.query}</div>
+                </div>
 
-                  {/* ── Bot message 1: Searching / Flights list ── */}
+                {/* Clarification UI */}
+                {entry.clarificationQuestions && entry.clarificationQuestions.length > 0 && (
                   <div className={styles.messageRowBot}>
                     <div className={styles.botAvatar}>A</div>
                     <div className={styles.botContent}>
-                      {entry.status === 'error' ? (
-                        <div className={styles.errorBubble}>⚠ {isLast && error ? error : 'Search failed.'}</div>
-                      ) : showSkeletons ? (
-                        <div className={styles.flightsContainer}>
-                          <div className={styles.statusBubble}>
-                            <div className={styles.spinner} />
-                            <span>{stageMessage || 'Searching for flights…'}</span>
+                      <div className={styles.clarificationBubble}>
+                        {entry.clarificationQuestions.map((q, i) => (
+                          <div key={i} className={styles.clarificationQuestion}>
+                            <div>{q.question}</div>
+                            {q.examples && q.examples.length > 0 && (
+                              <div className={styles.clarificationChips}>
+                                {q.examples.map((ex, eIdx) => (
+                                  <button
+                                    key={eIdx}
+                                    className={styles.clarificationChip}
+                                    onClick={() => {
+                                      setQuery(ex)
+                                      inputRef.current?.focus()
+                                    }}
+                                  >{ex}</button>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                          <div className={styles.flightList}>
-                            {[1, 2, 3, 4].map((i) => <FlightCardSkeleton key={i} />)}
-                          </div>
-                        </div>
-                      ) : entry.flights.length > 0 ? (
-                        <div className={styles.flightsContainer}>
-                          <p className={styles.responseText}>
-                            Here are the top {entry.flights.length} flights I found for you:
-                          </p>
-                          <div className={styles.flightList}>
-                            {entry.flights.map((flight, i) => (
-                              <FlightCard 
-                                key={i} 
-                                flight={flight} 
-                                selectable={false} 
-                                allFlights={entry.flights} 
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className={styles.statusBubble}>
-                          <span>No flights found.</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* ── Bot message 2: AI Analysis ── */}
-                  {entry.flights.length > 0 && (
-                    <div className={styles.messageRowBot}>
-                      <div className={styles.botAvatar}>A</div>
-                      <div className={styles.botContent}>
-                        {isLast && isAnalyzing && !entry.summary ? (
-                          <div className={styles.analyzingBubble}>
-                            <div className={styles.analyzeSpinner} />
-                            <div className={styles.analyzeTextBlock}>
-                              <span className={styles.analyzeTitle}>
-                                AI is analysing all {entry.flights.length} flights…
-                              </span>
-                              <span className={styles.analyzeSubtitle}>Finding the top 3 picks for you</span>
-                            </div>
-                          </div>
-                        ) : entry.summary ? (
-                          <AISummaryCard summary={entry.summary} plan={entry.plan} />
-                        ) : null}
+                        ))}
                       </div>
                     </div>
-                  )}
-                </React.Fragment>
-              )
-            })}
-            <div ref={messagesEndRef} />
-          </div>
-        )}
-      </div>
+                  </div>
+                )}
+                {/* ── Bot message 1: Searching / Flights list ── */}
+                <div className={styles.messageRowBot}>
+                  <div className={styles.botAvatar}>A</div>
+                  <div className={styles.botContent}>
+                    {entry.status === 'error' ? (
+                      <div className={styles.errorBubble}>⚠ {isLast && error ? error : 'Search failed.'}</div>
+                    ) : showSkeletons ? (
+                      <div className={styles.flightsContainer}>
+                        <div className={styles.statusBubble}>
+                          <div className={styles.spinner} />
+                          <span>{stageMessage || 'Searching for flights…'}</span>
+                        </div>
+                        <div className={styles.flightList}>
+                          {[1, 2, 3, 4].map((i) => <FlightCardSkeleton key={i} />)}
+                        </div>
+                      </div>
+                    ) : entry.flights.length > 0 ? (
+                      <div className={styles.flightsContainer}>
+                        <p className={styles.responseText}>
+                          Here are the top {entry.flights.length} flights I found for you:
+                        </p>
+                        <div className={styles.flightList}>
+                          {entry.flights.map((flight, i) => (
+                            <FlightCard
+                              key={i}
+                              flight={flight}
+                              selectable={false}
+                              allFlights={entry.flights}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={styles.statusBubble}>
+                        <span>No flights found.</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-      {/* ── Input area ── */}
-      <div className={styles.inputArea}>
-        {/* Mic error toast */}
-        {micState === MIC_ERROR && micError && (
-          <div className={styles.micErrorToast}>{micError}</div>
-        )}
-
-        <form onSubmit={handleSubmit} className={styles.form}>
-          {/* Mic button */}
-          <button
-            type="button"
-            className={`${styles.micBtn} ${styles[`micBtn_${micState}`]}`}
-            onClick={handleMicClick}
-            disabled={isRunning || micState === MIC_PROCESSING}
-            title={micTitle}
-            aria-label={micTitle}
-          >
-            <span className={styles.micIcon}>{micLabel}</span>
-            {micState === MIC_RECORDING && <span className={styles.micRipple} />}
-          </button>
-
-          <input
-            ref={inputRef}
-            className={styles.input}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={
-              micState === MIC_RECORDING  ? 'Listening…' :
-              micState === MIC_PROCESSING ? 'Transcribing your voice…' :
-              'Type or speak your flight request…'
-            }
-            disabled={isRunning || micState === MIC_RECORDING}
-            autoFocus
-          />
-
-          <button
-            type="submit"
-            className={styles.sendBtn}
-            disabled={!canSearch}
-          >
-            ↑
-          </button>
-        </form>
-
-        <div className={styles.footerNote}>
-          Aeroo AI · Speak or type · Powered by Groq Whisper
+                {/* ── Bot message 2: AI Analysis ── */}
+                {entry.flights.length > 0 && (
+                  <div className={styles.messageRowBot}>
+                    <div className={styles.botAvatar}>A</div>
+                    <div className={styles.botContent}>
+                      {isLast && isAnalyzing && !entry.summary ? (
+                        <div className={styles.analyzingBubble}>
+                          <div className={styles.analyzeSpinner} />
+                          <div className={styles.analyzeTextBlock}>
+                            <span className={styles.analyzeTitle}>
+                              AI is analysing all {entry.flights.length} flights…
+                            </span>
+                            <span className={styles.analyzeSubtitle}>Finding the top 3 picks for you</span>
+                          </div>
+                        </div>
+                      ) : entry.summary ? (
+                        <AISummaryCard summary={entry.summary} plan={entry.plan} />
+                      ) : null}
+                    </div>
+                  </div>
+                )}
+              </React.Fragment>
+            )
+          })}
+          <div ref={messagesEndRef} />
         </div>
+      )}
+    </div>
+
+    {/* ── Input area ── */}
+    <div className={styles.inputArea}>
+      {/* Mic error toast */}
+      {micState === MIC_ERROR && micError && (
+        <div className={styles.micErrorToast}>{micError}</div>
+      )}
+
+      <form onSubmit={handleSubmit} className={styles.form}>
+        {/* Mic button */}
+        <button
+          type="button"
+          className={`${styles.micBtn} ${styles[`micBtn_${micState}`]}`}
+          onClick={handleMicClick}
+          disabled={isRunning || micState === MIC_PROCESSING}
+          title={micTitle}
+          aria-label={micTitle}
+        >
+          <span className={styles.micIcon}>{micLabel}</span>
+          {micState === MIC_RECORDING && <span className={styles.micRipple} />}
+        </button>
+
+        <input
+          ref={inputRef}
+          className={styles.input}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={
+            awaitingClarification ? 'Answer the question…' :
+              micState === MIC_RECORDING ? 'Listening…' :
+                micState === MIC_PROCESSING ? 'Transcribing your voice…' :
+                  'Type or speak your flight request…'
+          }
+          disabled={(!awaitingClarification && isRunning) || micState === MIC_RECORDING}
+          autoFocus
+        />
+
+        <button
+          type="submit"
+          className={styles.sendBtn}
+          disabled={!canSearch}
+        >
+          ↑
+        </button>
+      </form>
+
+      <div className={styles.footerNote}>
+        Aeroo AI · Speak or type · Powered by Groq Whisper
       </div>
     </div>
-  )
+  </div>
+)
 }
+

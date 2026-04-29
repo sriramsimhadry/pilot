@@ -7,10 +7,17 @@ import asyncio
 import json
 import uuid
 import os
+import sys
 from datetime import datetime
+from pathlib import Path
 
 from dotenv import load_dotenv
 load_dotenv()
+
+# Ensure backend directory is in Python path for imports
+backend_dir = Path(__file__).parent.absolute()
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -77,8 +84,16 @@ async def start_workflow(request: QueryRequest):
 
     task = asyncio.create_task(orchestrator.run(query=request.query))
 
-    # Ensure finished workflows don't linger and later emit timeouts/errors.
+    # Keep clarification workflows alive so the user can answer follow-up
+    # questions; clean up only once the workflow is truly finished.
     def _cleanup(_task: asyncio.Task):
+        current = active_workflows.get(workflow_id)
+        if not current:
+            return
+
+        if current._awaiting_clarification:
+            return
+
         active_workflows.pop(workflow_id, None)
 
     task.add_done_callback(_cleanup)
@@ -148,6 +163,43 @@ async def get_status(workflow_id: str):
     return orchestrator.get_status()
 
 
+@app.post("/api/workflow/{workflow_id}/clarify")
+async def clarify_query(workflow_id: str, request: QueryRequest):
+    """Send a clarification response to continue incomplete query"""
+    if workflow_id not in active_workflows:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+
+    orchestrator = active_workflows[workflow_id]
+
+    # Check if workflow is awaiting clarification
+    if not orchestrator._awaiting_clarification:
+        raise HTTPException(status_code=400, detail="Workflow is not awaiting clarification")
+
+    logger.info(f"Received clarification for workflow {workflow_id}: {request.query}")
+
+    # Provide the clarification and resume workflow
+    await orchestrator.provide_clarification(request.query)
+
+    return {"status": "clarification_received", "workflow_id": workflow_id}
+
+
+@app.get("/api/workflow/{workflow_id}/clarification-status")
+async def get_clarification_status(workflow_id: str):
+    """Check if workflow is awaiting clarification and get pending questions"""
+    if workflow_id not in active_workflows:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+
+    orchestrator = active_workflows[workflow_id]
+    status = orchestrator.get_status()
+
+    return {
+        "workflow_id": workflow_id,
+        "awaiting_clarification": orchestrator._awaiting_clarification,
+        "stage": status.get("stage"),
+        "pending_questions": orchestrator.plan.get("clarification_questions", []) if orchestrator.plan else []
+    }
+
+
 @app.websocket("/ws/{workflow_id}")
 async def websocket_endpoint(websocket: WebSocket, workflow_id: str):
     """WebSocket endpoint for real-time updates"""
@@ -175,6 +227,11 @@ async def websocket_endpoint(websocket: WebSocket, workflow_id: str):
             try:
                 if status.get("summary") is not None:
                     await manager.send_summary(workflow_id, status.get("summary"))
+            except Exception:
+                pass
+            try:
+                if getattr(orch, "plan", None) and orch.plan.get("clarification_questions"):
+                    await manager.send_clarification_questions(workflow_id, orch.plan["clarification_questions"])
             except Exception:
                 pass
             try:

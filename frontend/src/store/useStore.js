@@ -32,6 +32,10 @@ const useStore = create((set, get) => ({
   screenshotUrl: null,
   screenshotTimestamp: null,
 
+  // ── Clarification State ─────────────────────────────────────────
+  awaitingClarification: false,
+  clarificationQuestions: [],
+
   // ── UI State ────────────────────────────────────────────────────
   activePanel: 'chat',
   passengerFormVisible: false,
@@ -73,6 +77,8 @@ const useStore = create((set, get) => ({
       selectedFlightIndex: null,
       currentHistoryId: historyId,
       chatHistory: [...state.chatHistory, newEntry],
+      awaitingClarification: false,
+      clarificationQuestions: [],
     }))
 
     try {
@@ -85,6 +91,31 @@ const useStore = create((set, get) => ({
       const workflowId = data.workflow_id
       set({ workflowId })
       get().connectWebSocket(workflowId)
+    } catch (err) {
+      set({ error: err.message, isRunning: false })
+      get()._updateCurrentHistory({ status: 'error' })
+    }
+  },
+
+  sendClarification: async (text) => {
+    const { workflowId } = get()
+    if (!workflowId || !text.trim()) return
+
+    // Append the user's clarification as a new chat bubble
+    get()._updateCurrentHistory({
+      clarificationReply: text.trim(),
+      clarificationQuestions: [],
+    })
+
+    // Reset clarification state optimistically so the UI doesn't double-render
+    set({ awaitingClarification: false, clarificationQuestions: [] })
+
+    try {
+      await fetch(`${API_BASE}/api/workflow/${workflowId}/clarify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: text.trim() }),
+      })
     } catch (err) {
       set({ error: err.message, isRunning: false })
       get()._updateCurrentHistory({ status: 'error' })
@@ -225,12 +256,31 @@ const useStore = create((set, get) => ({
 
       case 'stage':
         set({ stage: msg.payload.stage, stageMessage: msg.payload.message || '' })
+        if (msg.payload.stage === 'awaiting_clarification') {
+          set({ awaitingClarification: true })
+        }
+        // Once planning resumes after a clarification, clear clarification state
+        if (['planning', 'extracting', 'analyzing', 'completed'].includes(msg.payload.stage)) {
+          set({ awaitingClarification: false, clarificationQuestions: [] })
+          get()._updateCurrentHistory({ clarificationQuestions: [] })
+        }
         if (msg.payload.stage === 'awaiting_selection') set({ activePanel: 'chat' })
         if (msg.payload.stage === 'filling_form') set({ passengerFormVisible: true })
         if (['stopped_before_payment', 'completed', 'error'].includes(msg.payload.stage)) {
           set({ isRunning: false })
           get()._updateCurrentHistory({ status: msg.payload.stage === 'error' ? 'error' : 'done' })
         }
+        break
+
+      case 'clarification':
+        // Backend sent clarification questions — surface them in the chat
+        set({
+          awaitingClarification: true,
+          clarificationQuestions: msg.payload.questions || [],
+        })
+        get()._updateCurrentHistory({
+          clarificationQuestions: msg.payload.questions || [],
+        })
         break
 
       case 'flights':
@@ -251,7 +301,11 @@ const useStore = create((set, get) => ({
 
       case 'summary':
         set({ summary: msg.payload })
-        get()._updateCurrentHistory({ summary: msg.payload, status: 'done' })
+        get()._updateCurrentHistory({
+          summary: msg.payload,
+          status: 'done',
+          clarificationQuestions: [],
+        })
         break
 
       case 'error':

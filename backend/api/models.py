@@ -33,6 +33,7 @@ class FlightResult(BaseModel):
 class WorkflowStage(str, Enum):
     IDLE = "idle"
     PLANNING = "planning"
+    AWAITING_CLARIFICATION = "awaiting_clarification"
     OPENING_BROWSER = "opening_browser"
     NAVIGATING = "navigating"
     SEARCHING = "searching"

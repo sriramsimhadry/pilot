@@ -118,3 +118,13 @@ class ConnectionManager:
                 "timestamp": datetime.utcnow().isoformat(),
             }
         })
+
+    async def send_clarification_questions(self, workflow_id: str, questions: list):
+        """Send clarification questions to frontend"""
+        await self.send_message(workflow_id, {
+            "type": "clarification",
+            "payload": {
+                "questions": questions,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        })
