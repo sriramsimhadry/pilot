@@ -38,3 +38,5 @@ backend/aeroo.db
 # Test scripts
 test_rapid.py
 {backend/
+.vercel
+.env*.local

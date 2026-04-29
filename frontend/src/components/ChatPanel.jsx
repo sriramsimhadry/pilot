@@ -17,7 +17,7 @@ const MIC_RECORDING = 'recording'
 const MIC_PROCESSING = 'processing'
 const MIC_ERROR = 'error'
 
-const API_BASE = import.meta.env.VITE_API_BASE || ''
+const API_BASE = (import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 
 export default function ChatPanel() {
   const [query, setQuery] = useState('')
@@ -87,7 +87,8 @@ export default function ChatPanel() {
         throw new Error(err.detail || `Server error ${res.status}`)
       }
 
-      const data = await res.json()
+      const text = await res.text()
+      const data = JSON.parse(text)
       if (data.text) {
         // Append transcription to whatever the user may have already typed
         setQuery((prev) => (prev.trim() ? prev.trim() + ' ' + data.text : data.text))

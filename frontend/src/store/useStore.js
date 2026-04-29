@@ -1,8 +1,18 @@
 import { create } from 'zustand'
 
 // Use Vite proxy in dev (relative `/api` and `/ws`) and allow override via env.
-const API_BASE = import.meta.env.VITE_API_BASE || ''
-const WS_BASE  = import.meta.env.VITE_WS_BASE  || ''
+// Support both *_BASE and *_BASE_URL to avoid deployment misconfiguration.
+const API_BASE = (import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+const WS_BASE  = (import.meta.env.VITE_WS_BASE || import.meta.env.VITE_WS_BASE_URL || '').replace(/\/$/, '')
+
+const parseJsonOrThrow = async (res) => {
+  const text = await res.text()
+  try {
+    return JSON.parse(text)
+  } catch (_) {
+    throw new Error(`Expected JSON but got: ${text.slice(0, 120)}`)
+  }
+}
 
 const useStore = create((set, get) => ({
   // ── Workflow State ──────────────────────────────────────────────
@@ -87,7 +97,7 @@ const useStore = create((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query }),
       })
-      const data = await res.json()
+      const data = await parseJsonOrThrow(res)
       const workflowId = data.workflow_id
       set({ workflowId })
       get().connectWebSocket(workflowId)
